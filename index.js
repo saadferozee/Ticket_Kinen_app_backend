@@ -43,9 +43,12 @@ async function run() {
             res.send('Welcome to Ticket-kinen App database.')
         })
 
+        // Collections
         const database = client.db('ticket-kinen-app')
         const users = database.collection('all-users')
+        const tickets = database.collection('all-tickets')
 
+        // Users
         app.post('/users', async (req, res) => {
             const user = req.body;
             user.role = 'user'
@@ -74,6 +77,18 @@ async function run() {
                 return res.send(false);
             }
             res.send(result.role)
+        })
+
+        // Tickets
+        app.post('/tickets', async (req, res) => {
+            const ticket = req.body
+            ticket.createdAt = new Date()
+            const result = await tickets.insertOne(ticket)
+            res.send(result)
+        })
+        app.get('/tickets', async (req, res) => {
+            const result = await tickets.find().toArray()
+            res.send(result)
         })
 
         app.listen(port, () => {
