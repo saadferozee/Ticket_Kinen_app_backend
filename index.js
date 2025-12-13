@@ -57,10 +57,22 @@ async function run() {
             const result = await users.find().toArray()
             res.send(result)
         })
+        app.get('/users/user/:email', async (req, res) => {
+            const { email } = req.params
+            const query = { email: email }
+            const result = await users.findOne(query)
+            if (!result) {
+                return res.send(false);
+            }
+            res.send(result.email === email || false)
+        })
         app.get('/users/role/:email', async (req, res) => {
             const { email } = req.params
             const query = { email: email }
             const result = await users.findOne(query)
+            if (!result) {
+                return res.send(false);
+            }
             res.send(result.role)
         })
 
