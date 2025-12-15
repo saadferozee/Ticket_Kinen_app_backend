@@ -144,12 +144,16 @@ async function run() {
             const result = await tickets.find(query).toArray()
             res.send(result)
         })
+        app.patch('/tickets/update/status', verifyFirebaseToken, async (req, res) => {
+            const {id, status} = req.query
+            const query = {_id: new ObjectId(id)}
+            const updatedStatus = {
+                $set: {status}
+            }
+            const result = await tickets.updateOne(query, updatedStatus)
+            res.send(result)
+        })
 
-        // Error
-        // app.get('/*', (req, res) => {
-        //     console.log('Nothing, 404')
-        //     res.send('Nothing is here, 404 Error!')
-        // })
         // Listener
         app.listen(port, () => {
             console.log(`server is running on Port: ${port}`)
