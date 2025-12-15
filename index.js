@@ -112,23 +112,23 @@ async function run() {
             res.send(result)
         })
         app.patch('/users/update-status', verifyFirebaseToken, async (req, res) => {
-            const {email, status} = req.query
-            const query = {email}
+            const { email, status } = req.query
+            const query = { email }
             const updateStatus = {
-                $set: {status: status}
+                $set: { status: status }
             }
             const result = await users.updateOne(query, updateStatus)
             res.send(result)
         })
 
         // Tickets
-        app.post('/tickets', async (req, res) => {
+        app.post('/tickets', verifyFirebaseToken, async (req, res) => {
             const ticket = req.body
             ticket.createdAt = new Date()
             const result = await tickets.insertOne(ticket)
             res.send(result)
         })
-        app.get('/tickets', async (req, res) => {
+        app.get('/tickets', verifyFirebaseToken, async (req, res) => {
             const result = await tickets.find().toArray()
             res.send(result)
         })
@@ -144,13 +144,27 @@ async function run() {
             const result = await tickets.find(query).toArray()
             res.send(result)
         })
+        app.get('/tickets/approved-tickets', async (req, res) => {
+            const query = { status: 'approved' }
+            const result = await tickets.find(query).toArray()
+            res.send(result)
+        })
         app.patch('/tickets/update/status', verifyFirebaseToken, async (req, res) => {
-            const {id, status} = req.query
-            const query = {_id: new ObjectId(id)}
+            const { id, status } = req.query
+            const query = { _id: new ObjectId(id) }
             const updatedStatus = {
-                $set: {status}
+                $set: { status }
             }
             const result = await tickets.updateOne(query, updatedStatus)
+            res.send(result)
+        })
+        app.patch('/tickets/update/onAdd', verifyFirebaseToken, async (req, res) => {
+            const { id, onAdd } = req.query
+            const query = { _id: new ObjectId(id) }
+            const updateOnAdd = {
+                $set: { onAdd: onAdd === 'false' ? false : true }
+            }
+            const result = await tickets.updateOne(query, updateOnAdd)
             res.send(result)
         })
 
