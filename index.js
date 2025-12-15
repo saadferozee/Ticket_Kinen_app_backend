@@ -27,7 +27,7 @@ admin.initializeApp({
 const verifyFirebaseToken = async (req, res, next) => {
     const token = req.headers.authorization
     if (!token) {
-        return res.status(401).send({errorCode: 401, message: 'Unauthorized Access'})
+        return res.status(401).send({ errorCode: 401, message: 'Unauthorized Access' })
     }
     try {
         const idToken = token.split(' ')[1]
@@ -35,8 +35,8 @@ const verifyFirebaseToken = async (req, res, next) => {
         req.decoded_email = decoded.email
         next()
     }
-    catch{
-        return res.status(401).send({ errorCode: 401, message: 'Unauthorized Access'})
+    catch {
+        return res.status(401).send({ errorCode: 401, message: 'Unauthorized Access' })
     }
 }
 
@@ -102,6 +102,24 @@ async function run() {
             }
             res.send(result.role)
         })
+        app.patch('/users/update-role', verifyFirebaseToken, async (req, res) => {
+            const { email, role } = req.query
+            const query = { email }
+            const updateRole = {
+                $set: { role: role }
+            }
+            const result = await users.updateOne(query, updateRole)
+            res.send(result)
+        })
+        app.patch('/users/update-status', verifyFirebaseToken, async (req, res) => {
+            const {email, status} = req.query
+            const query = {email}
+            const updateStatus = {
+                $set: {status: status}
+            }
+            const result = await users.updateOne(query, updateStatus)
+            res.send(result)
+        })
 
         // Tickets
         app.post('/tickets', async (req, res) => {
@@ -115,8 +133,8 @@ async function run() {
             res.send(result)
         })
         app.get('/tickets/ticket/:id', async (req, res) => {
-            const {id} = req.params
-            const query = {_id: new ObjectId(id)}
+            const { id } = req.params
+            const query = { _id: new ObjectId(id) }
             const result = await tickets.findOne(query)
             res.send(result)
         })
