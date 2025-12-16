@@ -94,14 +94,14 @@ async function run() {
             }
             res.send(result.email === email || false)
         })
-        app.get('/users/role/:email', async (req, res) => {
+        app.get('/users/info/:email', async (req, res) => {
             const { email } = req.params
             const query = { email }
             const result = await users.findOne(query)
             if (!result) {
                 return res.send(false);
             }
-            res.send(result.role)
+            res.send({ role: result.role, status: result.status })
         })
         app.patch('/users/update-role', verifyFirebaseToken, async (req, res) => {
             const { email, role } = req.query
@@ -189,10 +189,10 @@ async function run() {
             res.send(result)
         })
         app.patch('/bookings/update/booking-status', verifyFirebaseToken, async (req, res) => {
-            const {id, bookingStatus} = req.query
-            const query = {_id: new ObjectId(id)}
+            const { id, bookingStatus } = req.query
+            const query = { _id: new ObjectId(id) }
             const updateStatus = {
-                $set: {bookingStatus}
+                $set: { bookingStatus }
             }
             const result = await bookings.updateOne(query, updateStatus)
             res.send(result)
