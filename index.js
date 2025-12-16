@@ -197,6 +197,12 @@ async function run() {
             const result = await bookings.updateOne(query, updateStatus)
             res.send(result)
         })
+        app.delete('/bookings/delete/:id', verifyFirebaseToken, async (req, res) => {
+            const {id} = req.params
+            const query = {_id: new ObjectId(id)}
+            const result = await bookings.deleteOne(query)
+            res.send(result)
+        })
 
 
         // Listener
