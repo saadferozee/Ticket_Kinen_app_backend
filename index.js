@@ -71,6 +71,7 @@ async function run() {
         const database = client.db('ticket-kinen-app')
         const users = database.collection('all-users')
         const tickets = database.collection('all-tickets')
+        const bookings = database.collection('bookings')
 
         // Users
         app.post('/users', async (req, res) => {
@@ -132,13 +133,13 @@ async function run() {
             const result = await tickets.find().toArray()
             res.send(result)
         })
-        app.get('/tickets/ticket/:id', async (req, res) => {
+        app.get('/tickets/ticket/:id', verifyFirebaseToken, async (req, res) => {
             const { id } = req.params
             const query = { _id: new ObjectId(id) }
             const result = await tickets.findOne(query)
             res.send(result)
         })
-        app.get('/tickets/my-tickets/:email', async (req, res) => {
+        app.get('/tickets/my-tickets/:email', verifyFirebaseToken, async (req, res) => {
             const { email } = req.params
             const query = { vendorEmail: email }
             const result = await tickets.find(query).toArray()
@@ -165,6 +166,14 @@ async function run() {
                 $set: { onAdd: onAdd === 'false' ? false : true }
             }
             const result = await tickets.updateOne(query, updateOnAdd)
+            res.send(result)
+        })
+
+        // ticket booking
+        app.post('/bookings', verifyFirebaseToken, async (req, res) => {
+            const bookingData = req.body
+            bookingData.createdAt = new Date()
+            const result = await bookings.insertOne(bookingData)
             res.send(result)
         })
 
