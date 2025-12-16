@@ -176,6 +176,13 @@ async function run() {
             const result = await bookings.insertOne(bookingData)
             res.send(result)
         })
+        app.get('/bookings/my-bookings/:userEmail', verifyFirebaseToken, async (req, res) => {
+            const {userEmail} = req.params
+            const query = {userEmail}
+            const result = await bookings.find(query).toArray()
+            res.send(result)
+        })
+
 
         // Listener
         app.listen(port, () => {
