@@ -177,9 +177,24 @@ async function run() {
             res.send(result)
         })
         app.get('/bookings/my-bookings/:userEmail', verifyFirebaseToken, async (req, res) => {
-            const {userEmail} = req.params
-            const query = {userEmail}
+            const { userEmail } = req.params
+            const query = { userEmail }
             const result = await bookings.find(query).toArray()
+            res.send(result)
+        })
+        app.get('/bookings/booking-request/:vendorEmail', verifyFirebaseToken, async (req, res) => {
+            const { vendorEmail } = req.params
+            const query = { vendorEmail }
+            const result = await bookings.find(query).toArray()
+            res.send(result)
+        })
+        app.patch('/bookings/update/booking-status', verifyFirebaseToken, async (req, res) => {
+            const {id, bookingStatus} = req.query
+            const query = {_id: new ObjectId(id)}
+            const updateStatus = {
+                $set: {bookingStatus}
+            }
+            const result = await bookings.updateOne(query, updateStatus)
             res.send(result)
         })
 
