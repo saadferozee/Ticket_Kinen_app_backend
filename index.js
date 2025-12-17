@@ -168,6 +168,29 @@ async function run() {
             const result = await tickets.updateOne(query, updateOnAdd)
             res.send(result)
         })
+        app.patch('/tickets/ticket/update/:id', verifyFirebaseToken, async (req, res) => {
+            const { id } = req.params
+            const data = req.body
+            const query = { _id: new ObjectId(id) }
+            const updateTicketsData = {
+                $set: {
+                    title: data.title,
+                    from: data.from,
+                    to: data.to,
+                    category: data.category,
+                    price: data.price,
+                    availableSits: data.availableSits,
+                    date: data.date,
+                    time: data.time,
+                    breakfast: data.breakfast,
+                    meal: data.meal,
+                    water: data.water,
+                    security: data.security
+                }
+            }
+            const result = await tickets.updateOne(query, updateTicketsData)
+            res.send(result)
+        })
 
         // ticket booking
         app.post('/bookings', verifyFirebaseToken, async (req, res) => {
@@ -198,8 +221,8 @@ async function run() {
             res.send(result)
         })
         app.delete('/bookings/delete/:id', verifyFirebaseToken, async (req, res) => {
-            const {id} = req.params
-            const query = {_id: new ObjectId(id)}
+            const { id } = req.params
+            const query = { _id: new ObjectId(id) }
             const result = await bookings.deleteOne(query)
             res.send(result)
         })
