@@ -191,6 +191,12 @@ async function run() {
             const result = await tickets.updateOne(query, updateTicketsData)
             res.send(result)
         })
+        app.delete('/tickets/delete/:id', verifyFirebaseToken, async (req, res) => {
+            const { id } = req.params
+            const query = { _id: new ObjectId(id) }
+            const result = await tickets.deleteOne(query)
+            res.send(result)
+        })
 
         // ticket booking
         app.post('/bookings', verifyFirebaseToken, async (req, res) => {
