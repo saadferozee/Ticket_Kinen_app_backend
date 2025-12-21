@@ -7,6 +7,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 const admin = require('firebase-admin')
 const stripe = require('stripe')(process.env.STRIPE_TEST_KEY) // this is for Stripe Payment gateway.
 const crypto = require('crypto')
+const { availableMemory } = require('process')
 
 // Create app and configure middleware
 const app = express()
@@ -74,6 +75,7 @@ async function run() {
         const users = database.collection('all-users')
         const tickets = database.collection('all-tickets')
         const bookings = database.collection('bookings')
+        const payments = database.collection('payments')
 
         // Users
         app.post('/users', async (req, res) => {
@@ -158,7 +160,7 @@ async function run() {
                 .limit(size)
                 .toArray()
 
-            const totalTickets = await tickets.countDocuments()
+            const totalTickets = await tickets.countDocuments(query)
 
             res.send({
                 data: result,
@@ -246,6 +248,93 @@ async function run() {
             const query = { _id: new ObjectId(id) }
             const result = await bookings.deleteOne(query)
             res.send(result)
+        })
+
+        // Payment
+        app.post('/checkout-payment', verifyFirebaseToken, async (req, res) => {
+            const {
+                productName,
+                bookingId,
+                ticketId,
+                userEmail,
+                userName,
+                vendorEmail,
+                vendorName,
+                unitPrice,
+                bookingQuantity,
+                totalPrice } = req.body
+
+            const session = await stripe.checkout.sessions.create({
+                line_items: [
+                    {
+                        price_data: {
+                            currency: 'bdt',
+                            unit_amount: unitPrice * 100,
+                            product_data: {
+                                name: productName
+                            }
+                        },
+                        quantity: bookingQuantity
+                    }
+                ],
+                mode: 'payment',
+                metadata: {
+                    booking_id: bookingId,
+                    booking_quantity: bookingQuantity,
+                    ticket_id: ticketId,
+                    buyer_name: userName,
+                    seller_name: vendorName,
+                    seller_email: vendorEmail
+                },
+                customer_email: userEmail,
+                success_url: `${process.env.SITE_DOMAIN}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+                cancel_url: `${process.env.SITE_DOMAIN}/payment-cancelled`
+            })
+
+            res.send({ url: session.url })
+        })
+        app.post('/success-payment', verifyFirebaseToken, async (req, res) => {
+            const { session_id } = req.query
+            const session = await stripe.checkout.sessions.retrieve(`${session_id}`)
+
+            const transactionId = session.payment_intent
+            const bookingId = session.metadata.booking_id
+            const bookingQuantity = Number(session.metadata.booking_quantity)
+            const ticketId = session.metadata.ticket_id
+
+            if (session.payment_status !== 'paid') {
+                return res.status(400).send({ message: 'Payment not completed' })
+            } else {
+                const paymentInfo = {
+                    amount: session.amount_total / 100,
+                    bookingId,
+                    buyingQuantity: bookingQuantity,
+                    ticketId,
+                    currency: session.currency,
+                    buyerEmail: session.customer_details.email,
+                    buyerName: session.customer_details.name,
+                    vendorName: session.metadata.seller_name,
+                    vendorEmail: session.metadata.seller_email,
+                    transactionId,
+                    paymentStatus: session.payment_status,
+                    paidAt: new Date()
+                }
+                const result = await payments.insertOne(paymentInfo)
+                const resultUpdateStatus = await bookings.updateOne(
+                    { _id: new ObjectId(bookingId) },
+                    {
+                        $set: { payment: 'paid' }
+                    }
+                )
+                const resultUpdateTicketQuantity = await tickets.updateOne(
+                    { _id: new ObjectId(ticketId) },
+                    {
+                        $inc: { availableSits: -bookingQuantity }
+                    }
+                )
+
+                res.send({ result, resultUpdateStatus, resultUpdateTicketQuantity });
+            }
         })
 
 
