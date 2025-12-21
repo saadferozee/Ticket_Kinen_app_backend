@@ -3,8 +3,10 @@ require('dotenv').config()
 // Import all dependencies
 const express = require('express')
 const cors = require('cors')
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 const admin = require('firebase-admin')
+const stripe = require('stripe')(process.env.STRIPE_TEST_KEY) // this is for Stripe Payment gateway.
+const crypto = require('crypto')
 
 // Create app and configure middleware
 const app = express()
@@ -147,8 +149,21 @@ async function run() {
         })
         app.get('/tickets/approved-tickets', async (req, res) => {
             const query = { status: 'approved' }
-            const result = await tickets.find(query).toArray()
-            res.send(result)
+            const size = 9
+            const page = req.query.page
+
+            const result = await tickets
+                .find(query)
+                .skip((page - 1) * size)
+                .limit(size)
+                .toArray()
+
+            const totalTickets = await tickets.countDocuments()
+
+            res.send({
+                data: result,
+                totalTickets
+            })
         })
         app.patch('/tickets/update/status', verifyFirebaseToken, async (req, res) => {
             const { id, status } = req.query
