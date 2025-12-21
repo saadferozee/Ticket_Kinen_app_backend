@@ -279,6 +279,7 @@ async function run() {
                 ],
                 mode: 'payment',
                 metadata: {
+                    product_name: productName,
                     booking_id: bookingId,
                     booking_quantity: bookingQuantity,
                     ticket_id: ticketId,
@@ -307,6 +308,7 @@ async function run() {
             } else {
                 const paymentInfo = {
                     amount: session.amount_total / 100,
+                    productName: session.metadata.product_name,
                     bookingId,
                     buyingQuantity: bookingQuantity,
                     ticketId,
@@ -335,6 +337,14 @@ async function run() {
 
                 res.send({ result, resultUpdateStatus, resultUpdateTicketQuantity });
             }
+        })
+        app.get('/payments', verifyFirebaseToken, async (req, res) => {
+            const buyerEmail = req.query.email
+            const query = {buyerEmail}
+
+            const result = await payments.find(query).toArray()
+
+            res.send(result)
         })
 
 
