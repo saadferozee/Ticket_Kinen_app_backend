@@ -149,6 +149,15 @@ async function run() {
             const result = await tickets.find(query).toArray()
             res.send(result)
         })
+        app.get('/tickets/all-approved-tickets', async (req, res) => {
+            const query = { status: 'approved' }
+
+            const result = await tickets
+                .find(query)
+                .toArray()
+
+            res.send( result)
+        })
         app.get('/tickets/approved-tickets', async (req, res) => {
             const query = { status: 'approved' }
             const size = 9
