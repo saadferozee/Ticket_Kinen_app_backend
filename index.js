@@ -158,6 +158,11 @@ async function run() {
 
             res.send( result)
         })
+        app.get('/tickets/advertised-tickets', async (req, res) => {
+            const query = {onAdd: true}
+            const result = await tickets.find(query).toArray()
+            res.send(result)
+        })
         app.get('/tickets/approved-tickets', async (req, res) => {
             const query = { status: 'approved' }
             const size = 9
