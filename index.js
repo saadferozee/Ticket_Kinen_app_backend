@@ -14,7 +14,8 @@ const app = express()
 app.use(cors({
     origin: [
         'http://localhost:5173',
-        'http://localhost:5174'
+        'http://localhost:5174',
+        'https://ticketkinen-app.web.app/'
     ],
     credentials: true
 }))
@@ -156,11 +157,22 @@ async function run() {
                 .find(query)
                 .toArray()
 
-            res.send( result)
+            res.send(result)
         })
         app.get('/tickets/advertised-tickets', async (req, res) => {
-            const query = {onAdd: true}
+            const query = { onAdd: true }
             const result = await tickets.find(query).toArray()
+            res.send(result)
+        })
+        app.get('/tickets/approved-tickets/latest', async (req, res) => {
+            const query = { status: 'approved' }
+
+            const result = await tickets
+                .find(query)
+                .sort({ _id: -1 })
+                .limit(6)
+                .toArray()
+
             res.send(result)
         })
         app.get('/tickets/approved-tickets', async (req, res) => {
@@ -182,9 +194,9 @@ async function run() {
             })
         })
         app.get('/tickets/approved-tickets/search', async (req, res) => {
-            const {from, to, page} = req.query
+            const { from, to, page } = req.query
             const size = 9
-            
+
             const query = {
                 status: 'approved',
                 from,
@@ -193,7 +205,7 @@ async function run() {
 
             const result = await tickets
                 .find(query)
-                .skip((page -1) * size)
+                .skip((page - 1) * size)
                 .limit(size)
                 .toArray()
 
@@ -377,7 +389,7 @@ async function run() {
         })
         app.get('/payments', verifyFirebaseToken, async (req, res) => {
             const buyerEmail = req.query.email
-            const query = {buyerEmail}
+            const query = { buyerEmail }
 
             const result = await payments.find(query).toArray()
 
