@@ -7,7 +7,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 const admin = require('firebase-admin')
 const stripe = require('stripe')(process.env.STRIPE_TEST_KEY) // this is for Stripe Payment gateway.
 const crypto = require('crypto')
-const { availableMemory, send } = require('process')
+// const { availableMemory, send } = require('process')
 
 // Create app and configure middleware
 const app = express()
@@ -15,7 +15,7 @@ app.use(cors({
     origin: [
         'http://localhost:5173',
         'http://localhost:5174',
-        'https://ticketkinen-app.web.app/'
+        'https://ticketkinen-app.web.app'
     ],
     credentials: true
 }))
