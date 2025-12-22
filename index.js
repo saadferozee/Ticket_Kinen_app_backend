@@ -7,7 +7,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 const admin = require('firebase-admin')
 const stripe = require('stripe')(process.env.STRIPE_TEST_KEY) // this is for Stripe Payment gateway.
 const crypto = require('crypto')
-const { availableMemory } = require('process')
+const { availableMemory, send } = require('process')
 
 // Create app and configure middleware
 const app = express()
@@ -157,6 +157,29 @@ async function run() {
             const result = await tickets
                 .find(query)
                 .skip((page - 1) * size)
+                .limit(size)
+                .toArray()
+
+            const totalTickets = await tickets.countDocuments(query)
+
+            res.send({
+                data: result,
+                totalTickets
+            })
+        })
+        app.get('/tickets/approved-tickets/search', async (req, res) => {
+            const {from, to, page} = req.query
+            const size = 9
+            
+            const query = {
+                status: 'approved',
+                from,
+                to
+            }
+
+            const result = await tickets
+                .find(query)
+                .skip((page -1) * size)
                 .limit(size)
                 .toArray()
 
