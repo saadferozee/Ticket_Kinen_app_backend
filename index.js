@@ -344,49 +344,70 @@ async function run() {
             res.send({ url: session.url })
         })
         app.post('/success-payment', verifyFirebaseToken, async (req, res) => {
-            const { session_id } = req.query
-            const session = await stripe.checkout.sessions.retrieve(`${session_id}`)
+            const { session_id } = req.query;
 
-            const transactionId = session.payment_intent
-            const bookingId = session.metadata.booking_id
-            const bookingQuantity = Number(session.metadata.booking_quantity)
-            const ticketId = session.metadata.ticket_id
+            const session = await stripe.checkout.sessions.retrieve(session_id);
 
             if (session.payment_status !== 'paid') {
-                return res.status(400).send({ message: 'Payment not completed' })
-            } else {
-                const paymentInfo = {
-                    amount: session.amount_total / 100,
-                    productName: session.metadata.product_name,
-                    bookingId,
-                    buyingQuantity: bookingQuantity,
-                    ticketId,
-                    currency: session.currency,
-                    buyerEmail: session.customer_details.email,
-                    buyerName: session.customer_details.name,
-                    vendorName: session.metadata.seller_name,
-                    vendorEmail: session.metadata.seller_email,
-                    transactionId,
-                    paymentStatus: session.payment_status,
-                    paidAt: new Date()
-                }
-                const result = await payments.insertOne(paymentInfo)
-                const resultUpdateStatus = await bookings.updateOne(
-                    { _id: new ObjectId(bookingId) },
-                    {
-                        $set: { payment: 'paid' }
-                    }
-                )
-                const resultUpdateTicketQuantity = await tickets.updateOne(
-                    { _id: new ObjectId(ticketId) },
-                    {
-                        $inc: { availableSits: -bookingQuantity }
-                    }
-                )
-
-                res.send({ result, resultUpdateStatus, resultUpdateTicketQuantity });
+                return res.status(400).send({ message: 'Payment not completed' });
             }
-        })
+
+            const transactionId = session.payment_intent;
+            const bookingId = session.metadata.booking_id;
+            const bookingQuantity = Number(session.metadata.booking_quantity);
+            const ticketId = session.metadata.ticket_id;
+
+            // check duplicate payment
+            const existingPayment = await payments.findOne({ transactionId });
+
+            if (existingPayment) {
+                return res.send({
+                    message: 'Payment already processed',
+                    totalAmount: existingPayment.amount,
+                    transactionId: existingPayment.transactionId
+                });
+            }
+
+            // create payment info
+            const paymentInfo = {
+                transactionId,
+                amount: session.amount_total / 100,
+                currency: session.currency,
+                productName: session.metadata.product_name,
+                bookingId,
+                buyingQuantity: bookingQuantity,
+                ticketId,
+                buyerEmail: session.customer_details.email,
+                buyerName: session.customer_details.name,
+                vendorName: session.metadata.seller_name,
+                vendorEmail: session.metadata.seller_email,
+                paymentStatus: session.payment_status,
+                paidAt: new Date()
+            };
+
+            // insert payment
+            const result = await payments.insertOne(paymentInfo);
+
+            // Step 4: update booking status
+            const resultUpdateStatus = await bookings.updateOne(
+                { _id: new ObjectId(bookingId) },
+                { $set: { payment: 'paid' } }
+            );
+
+            // update ticket quantity
+            const resultUpdateTicketQuantity = await tickets.updateOne(
+                { _id: new ObjectId(ticketId) },
+                { $inc: { availableSits: -bookingQuantity } }
+            );
+
+            res.send({
+                result,
+                resultUpdateStatus,
+                resultUpdateTicketQuantity,
+                totalAmount: session.amount_total / 100,
+            });
+        });
+
         app.get('/payments', verifyFirebaseToken, async (req, res) => {
             const buyerEmail = req.query.email
             const query = { buyerEmail }
@@ -395,6 +416,79 @@ async function run() {
 
             res.send(result)
         })
+        app.get('/revenue-overview', verifyFirebaseToken, async (req, res) => {
+            const { email } = req.query;
+
+            const paymentsData = await payments
+                .find({
+                    vendorEmail: email,
+                    paymentStatus: "paid"
+                })
+                .toArray();
+            
+            // Calculations starts here ----------->
+
+            // Total Revenue
+            const totalRevenue = paymentsData.reduce(
+                (sum, payment) => sum + Number(payment.amount),
+                0
+            );
+
+            // Total Tickets Sold
+            const ticketsSold = paymentsData.reduce(
+                (sum, payment) => sum + Number(payment.buyingQuantity),
+                0
+            );
+
+
+            // Calculating Revenue 
+            const revenueMap = {};
+
+            paymentsData.forEach(payment => {
+                // catch date, format: YYYY-MM-DD
+                const date = new Date(payment.paidAt).toLocaleDateString("en-CA");
+
+                if (!revenueMap[date]) {
+                    revenueMap[date] = 0;
+                }
+                revenueMap[date] += Number(payment.amount);
+            });
+
+            const revenueStats = Object.keys(revenueMap).map(date => ({
+                date,
+                revenue: revenueMap[date]
+            }));
+
+            // Tickets Information
+            const ticketStats = [
+                { name: "Sold", count: ticketsSold }
+            ];
+
+            // tickets collection
+            let ticketsAdded = 0;
+            try {
+                ticketsAdded = await tickets.countDocuments({
+                    vendorEmail: email
+                });
+            } catch (err) {
+                ticketsAdded = 0; // fallback
+            }
+
+            ticketStats.push({
+                name: "Added",
+                count: ticketsAdded
+            });
+
+            // final data
+            res.send({
+                totalRevenue,
+                ticketsSold,
+                ticketsAdded,
+                revenueStats,
+                ticketStats
+            });
+        });
+
 
 
         // Listener
